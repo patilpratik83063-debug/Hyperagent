@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hyperclients — LinkedIn Buyer Leads</title>
+<style>
+  :root{
+    --bg1:#0a1a17; --bg2:#0d1f1c;
+    --panel:#0f2622; --border:#1e3a35;
+    --head:#e8f4f2; --sec:#8fa8a3;
+    --teal:#2dd4bf; --cyan:#22d3ee;
+    --orange:#f5a623; --amber:#facc15;
+    --danger:#f87171;
+    --radius:12px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--head);
+    background:linear-gradient(180deg,var(--bg1) 0%,var(--bg2) 100%) fixed;
+    min-height:100vh;
+    line-height:1.45;
+  }
+  a{color:var(--cyan)}
+  a:hover{color:var(--teal)}
+  .topbar{
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+    padding:22px 20px 14px; max-width:1100px; margin:0 auto;
+  }
+  #logo-slot img{height:46px;width:auto;display:block}
+  .titleblock h1{
+    margin:0; font-size:1.55rem; letter-spacing:.2px;
+    background:linear-gradient(90deg,#ffffff 0%,var(--teal) 55%,var(--orange) 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    font-weight:750;
+  }
+  .titleblock .subhead{margin:2px 0 0;color:var(--sec);font-size:.95rem;max-width:640px}
+  main{max-width:1100px;margin:0 auto;padding:6px 16px 60px}
+  .tabbar{display:flex;gap:6px;margin:10px 0 16px}
+  .tab{
+    background:transparent;border:1px solid var(--border);color:var(--sec);
+    padding:8px 16px;border-radius:999px;cursor:pointer;font-size:.9rem;
+  }
+  .tab:hover{color:var(--head);border-color:#2a4a43}
+  .tab[aria-selected="true"]{
+    background:var(--panel);color:var(--teal);border-color:var(--teal);
+  }
+  .card{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 18px 20px;margin-bottom:18px;
+  }
+  .card h2{margin:0 0 14px;font-size:1.05rem;color:var(--head)}
+  .muted{color:var(--sec);font-size:.86rem}
+  .small{font-size:.82rem}
+  .seg{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 4px}
+  .window-note{margin:2px 0 10px;color:var(--sec)}
+  .window-note.warn{color:var(--amber)}
+  .seg-btn{
+    background:#0b201c;color:var(--sec);border:1px solid var(--border);
+    padding:7px 12px;border-radius:8px;cursor:pointer;font-size:.88rem;
+  }
+  .seg-btn:hover{color:var(--head)}
+  .seg-btn[aria-pressed="true"]{
+    color:var(--teal);border-color:var(--teal);background:#0e2b26;
+  }
+  .field-label{display:block;margin:14px 0 4px;color:var(--head);font-size:.88rem;font-weight:600}
+  input[type=text], select, textarea{
+    width:100%;background:#0b201c;border:1px solid var(--border);color:var(--head);
+    border-radius:8px;padding:9px 10px;font-size:.93rem;
+  }
+  input[type=text]:focus, select:focus, textarea:focus, button:focus-visible, .seg-btn:focus-visible{
+    outline:2px solid var(--cyan);outline-offset:1px;
+  }
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:640px){.grid2{grid-template-columns:1fr}}
+  .helper{
+    margin-top:12px;padding:10px 12px;border:1px dashed var(--border);border-radius:8px;
+    color:var(--sec);font-size:.84rem;
+  }
+  .helper b{color:var(--teal);font-weight:600}
+  .actionrow{display:flex;align-items:center;gap:14px;margin-top:16px;flex-wrap:wrap}
+  #usage-pill{
+    border:1px solid var(--border);border-radius:999px;padding:6px 12px;
+    color:var(--sec);font-size:.83rem;white-space:nowrap;
+  }
+  #usage-pill .n{color:var(--amber);font-weight:700}
+  button.cta{
+    background:var(--orange);color:#1a1204;border:none;font-weight:700;font-size:1rem;
+    padding:11px 26px;border-radius:10px;cursor:pointer;
+  }
+  button.cta:hover:not(:disabled){background:var(--amber)}
+  button.cta:disabled{opacity:.55;cursor:not-allowed}
+  .banner{
+    margin-top:14px;padding:11px 13px;border-radius:8px;border:1px solid;font-size:.9rem;
+    display:none;
+  }
+  .banner.show{display:block}
+  .banner.err{background:#2a1212;color:#fecaca;border-color:#7f1d1d}
+  .banner.ok{background:#0c2b22;color:#99f6e4;border-color:#134e4a}
+  .banner.warn{background:#2b2110;color:#fde68a;border-color:#7c5a10}
+  #progress-wrap{display:none;margin-top:14px}
+  #progress-wrap.show{display:block}
+  .pbar{height:8px;background:#0b201c;border-radius:99px;overflow:hidden;border:1px solid var(--border)}
+  .pbar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--teal),var(--cyan));transition:width .5s}
+  #progress-line{margin-top:7px;color:var(--sec);font-size:.85rem}
+  /* results */
+  .contextline{color:var(--sec);font-size:.88rem;margin-bottom:10px}
+  .filterbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 12px}
+  .tblwrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
+  table{width:100%;border-collapse:collapse;min-width:900px;font-size:.88rem}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid #17312c;vertical-align:top}
+  th{color:var(--sec);font-weight:600;background:#0c201c;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em}
+  tr:last-child td{border-bottom:none}
+  .chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.76rem;border:1px solid transparent;white-space:nowrap}
+  .chip.teal{color:var(--teal);border-color:#166e63;background:#0b2420}
+  .chip.cyan{color:var(--cyan);border-color:#155e75;background:#082f41}
+  .chip.orange{color:var(--amber);border-color:#6b4d10;background:#241d08}
+  .chip.score-hi{color:#6ee7b7;background:#07271d;border-color:#0f6b4d}
+  .chip.score-mid{color:var(--amber);background:#241d08;border-color:#6b4d10}
+  .chip.status-new{color:#a5b4fc;border-color:#4338ca;background:#151a3a}
+  .chip.status-contacted{color:var(--cyan);border-color:#155e75;background:#082f41}
+  .chip.status-replied{color:#6ee7b7;border-color:#0f6b4d;background:#07271d}
+  .chip.status-notafit{color:#cbd5e1;border-color:#334155;background:#1e293b}
+  .snippet{color:#cfe3df;max-width:340px}
+  .snippet .clip{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .post-actions{display:flex;align-items:center;gap:10px;margin-top:5px;flex-wrap:wrap}
+  .copy-url{
+    background:transparent;border:1px solid var(--border);color:var(--sec);
+    border-radius:6px;font-size:.76rem;padding:2px 9px;cursor:pointer;
+  }
+  .copy-url:hover{color:var(--teal);border-color:var(--teal)}
+  .copy-url.copied{color:#6ee7b7;border-color:#0f6b4d}
+  .author b{color:var(--head);font-weight:600}
+  .cell-select select{padding:4px 6px;font-size:.82rem;max-width:130px}
+  .notes-input{width:200px;font-size:.82rem;padding:5px 7px}
+  td .date{color:var(--sec);white-space:nowrap;font-size:.82rem}
+  .past-item{
+    border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:10px;
+  }
+  .past-top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+  .past-meta{color:var(--sec);font-size:.83rem;margin-top:4px}
+  .past-actions button{
+    background:transparent;border:1px solid var(--border);color:var(--teal);
+    border-radius:8px;padding:6px 12px;cursor:pointer;font-size:.84rem;
+  }
+  .past-actions button:hover{border-color:var(--teal)}
+  .empty{color:var(--sec);text-align:center;padding:26px 10px;font-size:.93rem}
+  footer{color:#44635d;text-align:center;font-size:.78rem;padding:18px 10px 30px}
+  [hidden]{display:none !important}
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <!-- LOGO: swap the <img> below for the final logo file if it changes -->
+    <div id="logo-slot"><img src="logo.png" alt="Hyperclients logo"></div>
+    <div class="titleblock">
+      <h1>Hyperclients</h1>
+      <p class="subhead">Qualified LinkedIn buyer leads for your service — sellers, job-seekers, recruiters and “thought leadership” filtered out automatically.</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="tabbar" role="tablist" aria-label="Sections">
+      <button class="tab" id="tab-new" role="tab" aria-selected="true" aria-controls="view-new" data-tab="new">New search</button>
+      <button class="tab" id="tab-past" role="tab" aria-selected="false" aria-controls="view-past" data-tab="past">Past searches</button>
+    </div>
+
+    <!-- ============================ NEW SEARCH ============================ -->
+    <section id="view-new" role="tabpanel" aria-labelledby="tab-new">
+      <div class="card">
+        <h2>Who are you looking for?</h2>
+
+        <span class="field-label" id="lbl-leadtype">Lead type</span>
+        <div class="seg" id="leadtype-seg" role="group" aria-labelledby="lbl-leadtype"></div>
+
+        <span class="field-label" id="lbl-window">Freshness window</span>
+        <div class="seg" id="window-seg" role="group" aria-labelledby="lbl-window"></div>
+        <div class="window-note muted small" id="window-note" aria-live="polite"></div>
+
+        <form id="search-form" novalidate>
+          <div class="grid2">
+            <div>
+              <label class="field-label" for="service">What are people asking for?</label>
+              <input type="text" id="service" name="service" required minlength="3"
+                     placeholder="e.g. a video editor, social media management, logo design"
+                     autocomplete="off">
+            </div>
+            <div>
+              <label class="field-label" for="country">Country / Location <span class="muted">(optional)</span></label>
+              <input type="text" id="country" name="country" placeholder="e.g. United States" autocomplete="off">
+            </div>
+          </div>
+
+          <label class="field-label" for="needed">Leads needed</label>
+          <select id="needed" name="needed">
+            <option value="10">10 leads</option>
+            <option value="25" selected>25 leads</option>
+            <option value="50">50 leads</option>
+            <option value="100">100 leads</option>
+          </select>
+
+          <div class="helper">
+            <b>Buyer-only, exact count.</b> Only posts where the author is genuinely buying this service are kept —
+            sellers pitching their own services, job seekers, talent marketplaces, agency self-promotion and generic
+            advice are rejected. The engine runs until it finds the exact number you asked for, or exhausts LinkedIn
+            results — it never pads the list with weak matches.
+          </div>
+
+          <div class="actionrow">
+            <button class="cta" id="start-btn" type="submit">Start Search</button>
+            <span id="usage-pill" aria-live="polite">…</span>
+          </div>
+
+          <div id="form-banner" class="banner" role="alert"></div>
+
+          <div id="progress-wrap" aria-live="polite">
+            <div class="pbar"><i id="progress-bar"></i></div>
+            <div id="progress-line"></div>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ============================ PAST SEARCHES ============================ -->
+    <section id="view-past" role="tabpanel" aria-labelledby="tab-past" hidden>
+      <div class="card">
+        <h2>Past searches</h2>
+        <div id="past-list"></div>
+      </div>
+    </section>
+
+    <!-- ============================ RESULTS ============================ -->
+    <section id="results" hidden>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">
+          <h2>Qualified leads</h2>
+          <span id="results-context" class="muted"></span>
+        </div>
+
+        <div id="result-banner" class="banner" role="status"></div>
+
+        <div class="filterbar">
+          <span class="muted">Window:</span>
+          <div class="seg" id="refilter-seg" style="margin:0" role="group" aria-label="Re-filter saved leads by time window"></div>
+          <span class="muted small" id="filter-hint">Re-slices already-saved leads by their post date — no new search.</span>
+        </div>
+
+        <div id="leads-empty" class="empty" hidden>No qualified leads match this view yet. Start a search or pick one from Past searches.</div>
+
+        <div class="tblwrap" id="tblwrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Score</th><th>Type</th><th>Window</th><th>Post</th><th>Author</th><th>Date</th>
+                <th>Status</th><th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="leads-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>Hyperclients · buyer-only lead qualification · precision over volume</footer>
+
+<script>
+"use strict";
+/* ------------------------------------------------------------------ helpers */
+const $ = (id) => document.getElementById(id);
+function esc(v){
+  return String(v ?? "").replace(/[&<>"']/g, (c) => (
+    {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function href(url){
+  const u = String(url || "").trim();
+  if(!u) return "";
+  return /^https?:\/\//i.test(u) ? esc(u) : "https://" + esc(u);
+}
+async function api(path, opts){
+  const resp = await fetch(path, Object.assign({headers:{"Content-Type":"application/json"}}, opts));
+  let data = null;
+  try{ data = await resp.json(); }catch(_){ /* non-JSON */ }
+  if(!resp.ok){
+    const detail = data && (typeof data.detail === "string" ? data.detail
+                  : data.detail && data.detail.message ? data.detail.message
+                  : JSON.stringify(data.detail || data));
+    throw new Error(detail || ("HTTP " + resp.status));
+  }
+  return data;
+}
+
+/* ------------------------------------------------------------------ state */
+const LEAD_TYPES = [
+  {id:"need_freelancer", label:"Need Freelancer"},
+  {id:"hiring_buyer",    label:"Hiring Buyer"},
+  {id:"our_agency",      label:"Our Agency"},
+];
+const WINDOWS = [
+  {id:"7d",  label:"Last 7 days"},
+  {id:"14d", label:"Last 14 days"},
+  {id:"28d", label:"Last 28 days"},
+];
+const STATUSES = [
+  {id:"new",        label:"New"},
+  {id:"contacted",  label:"Contacted"},
+  {id:"replied",    label:"Replied"},
+  {id:"not_a_fit",  label:"Not a fit"},
+];
+const state = {
+  leadType: "need_freelancer",
+  window: "7d",
+  currentSearchId: null,
+  currentSearchRow: null,
+  filterWindow: "all",
+  searching: false,
+  pollTimer: null,
+  noteTimers: {},
+};
+
+/* ------------------------------------------------------------------ tabs */
+function switchTab(name){
+  $("tab-new").setAttribute("aria-selected", name === "new");
+  $("tab-past").setAttribute("aria-selected", name === "past");
+  $("view-new").hidden = name !== "new";
+  $("view-past").hidden = name !== "past";
+}
+document.querySelectorAll(".tab").forEach((t) =>
+  t.addEventListener("click", () => switchTab(t.dataset.tab)));
+
+/* ------------------------------------------------------- segmented builder */
+function makeSeg(container, items, currentId, onPick){
+  container.innerHTML = "";
+  items.forEach((it) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "seg-btn";
+    b.dataset.id = it.id;
+    b.textContent = it.label;
+    b.setAttribute("aria-pressed", String(it.id === currentId));
+    b.addEventListener("click", () => {
+      container.querySelectorAll(".seg-btn").forEach((x) => x.setAttribute("aria-pressed","false"));
+      b.setAttribute("aria-pressed","true");
+      onPick(it.id);
+    });
+    container.appendChild(b);
+  });
+}
+
+/* ------------------------------------------------------------ usage pill */
+async function refreshUsage(){
+  try{
+    const u = await api("/api/usage");
+    $("usage-pill").innerHTML = 'Searches left today: <span class="n">' + u.remaining + "</span> / " + u.limit;
+    return u;
+  }catch(_){ $("usage-pill").textContent = "usage unavailable"; return null; }
+}
+
+function windowNote(){
+  const el = $("window-note");
+  if(!el) return;
+  el.className = "window-note muted small";
+  el.textContent = "The engine loops until it finds the exact number of leads you asked for, or discovery genuinely runs dry (Google's coverage of LinkedIn posts is partial) — it never pads with weak matches.";
+}
+
+/* ------------------------------------------------------- lead-type + win */
+function leadTypeLabel(id){
+  const t = LEAD_TYPES.find((x) => x.id === id);
+  return t ? t.label : (id || "—");
+}
+function windowLabel(id){
+  if(id === "all") return "All time";
+  const w = WINDOWS.find((x) => x.id === id);
+  return w ? w.label : (id || "—");
+}
+function statusChip(id){
+  const map = {new:"status-new", contacted:"status-contacted", replied:"status-replied", not_a_fit:"status-notafit"};
+  const s = STATUSES.find((x) => x.id === id) || STATUSES[0];
+  return '<span class="chip ' + (map[id] || "status-new") + '">' + esc(s.label) + "</span>";
+}
+
+/* ------------------------------------------------------------ search flow */
+async function startSearch(ev){
+  ev.preventDefault();
+  if(state.searching) return;
+  const service = $("service").value.trim();
+  if(service.length < 3){
+    showFormBanner("err", "Describe the service people ask for — e.g. “a video editor”.");
+    return;
+  }
+  const body = {
+    service,
+    country: $("country").value.trim(),
+    lead_type: state.leadType,
+    time_window: state.window,
+    leads_needed: parseInt($("needed").value, 10),
+  };
+  hideFormBanner();
+  setProgress(true, 0, "Queuing search…");
+  state.searching = true;
+  $("start-btn").disabled = true;
+  try{
+    const res = await api("/api/search", {method:"POST", body: JSON.stringify(body)});
+    state.currentSearchId = res.search_id;
+    state.currentSearchRow = {service, country: body.country, lead_type: state.leadType,
+                              time_window: state.window, leads_needed: body.leads_needed};
+    showResultsContext();
+    pollStatus(res.search_id);
+  }catch(err){
+    showFormBanner("err", "Could not start the search: " + err.message);
+    setProgress(false);
+  }finally{
+    state.searching = false;
+    $("start-btn").disabled = false;
+    refreshUsage();
+  }
+}
+
+async function pollStatus(searchId){
+  const started = Date.now();
+  let done = false;
+  while(!done){
+    if(Date.now() - started > 60 * 75 * 1000){ done = true; break; } /* safety cap */
+    try{
+      const s = await api("/api/search/" + encodeURIComponent(searchId) + "/status");
+      const total = s.leads_needed || 1;
+      const pct = Math.min(100, Math.round((s.accepted / total) * 100));
+      setProgress(true, pct, statusLine(s));
+      if(s.status === "completed" || s.status === "failed" || s.status === "no_results"){
+        done = true;
+        finishFlow(s);
+        return;
+      }
+    }catch(err){
+      /* transient poll error: keep trying a few times */
+      setProgress(true, null, "Status check failed: " + err.message);
+    }
+    await new Promise((r) => setTimeout(r, 2500));
+  }
+}
+
+function statusLine(s){
+  if(s.status === "queued") return "Queued…";
+  if(s.status === "running"){
+    return "Scanning LinkedIn · accepted " + s.accepted + "/" + (s.leads_needed || "?") +
+           " qualified · scanned " + s.scanned + " posts" + (s.message && s.message !== "running" ? " — " + s.message : "");
+  }
+  if(s.status === "completed") return "Done: " + s.accepted + " qualified lead(s) saved.";
+  if(s.status === "no_results") return "Discovery found nothing — see the alert below.";
+  return "Search failed — see the alert below.";
+}
+
+function finishFlow(s){
+  setProgress(false);
+  state.currentSearchId = s.search_id;
+  state.currentSearchRow = state.currentSearchRow || {};
+  state.filterWindow = "all";
+  showResults();
+  if(s.status === "completed"){
+    if(s.accepted < (s.leads_needed || 0)){
+      const caveat = s.accepted === 0
+        ? " Zero hits is often normal, not a failure: Google indexes LinkedIn posts partially and with a ~1-3 day lag, so tight phrases and short windows can return nothing."
+        : " The engine stopped because discovery ran dry — it never pads with weak matches.";
+      showResultBanner("warn",
+        "Found " + s.accepted + " of " + s.leads_needed + " qualified leads." + caveat +
+        (s.message && s.message !== "completed" ? "<br><span class='muted'>" + esc(s.message) + "</span>" : ""));
+    }else{
+      showResultBanner("ok", "Search complete — exactly " + s.accepted + " qualified lead(s) saved.");
+    }
+  }else if(s.status === "no_results"){
+    showResultBanner("err",
+      "<b>Discovery returned nothing for these queries.</b> " +
+      "This is often normal Google behavior for tight phrases and recent windows — try a wider phrasing or a " +
+      "7d/14d/28d window. If the provider itself is failing, check SERPER_API_KEY and provider status. " +
+      (s.message ? "<br><span class='muted'>" + esc(s.message) + "</span>" : ""));
+  }else{
+    showResultBanner("err", "<b>Search failed.</b> " + (s.message ? esc(s.message) : "Unknown error."));
+  }
+  refreshPastSearches();
+}
+
+function showFormBanner(kind, html){
+  const b = $("form-banner");
+  b.className = "banner " + kind + " show";
+  b.innerHTML = html;
+}
+function hideFormBanner(){ $("form-banner").className = "banner"; }
+
+function setProgress(on, pct, line){
+  $("progress-wrap").classList.toggle("show", !!on);
+  if(pct !== null && pct !== undefined){ $("progress-bar").style.width = pct + "%"; }
+  $("progress-line").textContent = line || "";
+}
+
+/* --------------------------------------------------------------- results */
+function showResultsContext(){
+  const row = state.currentSearchRow;
+  $("results-context").textContent = row
+    ? "Search: “" + row.service + "” · " + leadTypeLabel(row.lead_type) + " · " + windowLabel(row.time_window) +
+      (row.country ? " · " + row.country : "") + " · asked " + row.leads_needed
+    : "";
+}
+
+function showResults(){
+  $("results").hidden = false;
+  loadLeads();
+}
+
+async function loadLeads(){
+  const params = new URLSearchParams();
+  if(state.currentSearchId) params.set("search_id", state.currentSearchId);
+  if(state.filterWindow !== "all") params.set("time_window", state.filterWindow);
+  const qs = params.toString();
+  try{
+    const data = await api("/api/leads" + (qs ? "?" + qs : ""));
+    renderLeads(data.leads || []);
+    $("filter-hint").textContent = state.filterWindow === "all"
+      ? "Showing leads for this search. Pick a window to re-slice them by post date."
+      : "Showing only leads posted in the " + windowLabel(state.filterWindow).toLowerCase() + ".";
+  }catch(err){
+    showResultBanner("err", "Failed to load leads: " + esc(err.message));
+  }
+}
+
+function renderLeads(leads){
+  const body = $("leads-body");
+  $("leads-empty").hidden = leads.length > 0;
+  $("tblwrap").hidden = leads.length === 0;
+  body.innerHTML = "";
+  leads.forEach((l) => {
+    const score = Math.round(l.overall_quality_score || 0);
+    const scoreChip = score >= 80 ? "score-hi" : score >= 60 ? "score-mid" : "score-mid";
+    const date = l.post_date ? String(l.post_date) : "—";
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td><span class="chip ' + scoreChip + '">' + score + "</span></td>" +
+      '<td><span class="chip ' + (l.lead_type === "our_agency" ? "orange" : l.lead_type === "hiring_buyer" ? "cyan" : "teal") + '">' +
+        esc(leadTypeLabel(l.lead_type)) + "</span></td>" +
+      '<td><span class="chip teal">' + esc(windowLabel(l.time_window)) + "</span></td>" +
+      '<td class="snippet"><div class="clip" title="' + esc(l.post_text || "") + '">' + esc(l.post_text || "") + "</div>" +
+        (l.post_url
+          ? '<div class="post-actions"><a href="' + href(l.post_url) + '" target="_blank" rel="noopener">Open post ↗</a>' +
+            ' <button type="button" class="copy-url" data-url="' + esc(l.post_url) + '">Copy URL</button></div>'
+          : '<span class="muted small">missing post url</span>') + "</td>" +
+      '<td class="author">' + (l.author_name ? "<b>" + esc(l.author_name) + "</b>" : "—") + "<br>" +
+        (l.author_profile_url ? '<a href="' + href(l.author_profile_url) + '" target="_blank" rel="noopener">Profile ↗</a>' : "") + "</td>" +
+      '<td><span class="date">' + esc(date) + "</span></td>" +
+      '<td class="cell-select">' + statusSelect(l) + "</td>" +
+      '<td><input class="notes-input" type="text" data-id="' + esc(l.id) + '" value="' + esc(l.notes || "") +
+        '" placeholder="Add a note…" aria-label="Notes"></td>';
+    body.appendChild(tr);
+  });
+  /* copy post URL */
+  body.querySelectorAll("button.copy-url").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const url = btn.dataset.url || "";
+      const done = () => { btn.textContent = "Copied"; btn.classList.add("copied");
+                           setTimeout(() => { btn.textContent = "Copy URL"; btn.classList.remove("copied"); }, 1600); };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(url);
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = url; document.body.appendChild(ta); ta.select();
+          document.execCommand("copy"); document.body.removeChild(ta);
+        }
+        done();
+      } catch (err) {
+        window.prompt("Copy the post URL:", url);
+      }
+    });
+  });
+  /* status selectors */
+  body.querySelectorAll("select[data-id]").forEach((sel) => {
+    sel.addEventListener("change", async () => {
+      const id = sel.dataset.id;
+      const row = leads.find((l) => l.id === id);
+      if(row) row.status = sel.value;
+      try{
+        await api("/api/leads/" + encodeURIComponent(id), {method:"PATCH", body: JSON.stringify({status: sel.value})});
+      }catch(err){ showResultBanner("err", "Could not update status: " + esc(err.message)); }
+    });
+  });
+  /* notes */
+  body.querySelectorAll("input.notes-input").forEach((inp) => {
+    const id = inp.dataset.id;
+    const commit = async () => {
+      try{
+        await api("/api/leads/" + encodeURIComponent(id), {method:"PATCH", body: JSON.stringify({notes: inp.value})});
+      }catch(err){ showResultBanner("err", "Could not save note: " + esc(err.message)); }
+    };
+    inp.addEventListener("input", () => {
+      clearTimeout(state.noteTimers[id]);
+      state.noteTimers[id] = setTimeout(commit, 700);
+    });
+    inp.addEventListener("keydown", (e) => {
+      if(e.key === "Enter"){ clearTimeout(state.noteTimers[id]); commit(); inp.blur(); }
+    });
+  });
+}
+
+function statusSelect(lead){
+  let out = '<select data-id="' + esc(lead.id) + '" aria-label="Lead status">';
+  STATUSES.forEach((s) => {
+    out += '<option value="' + s.id + '"' + (lead.status === s.id ? " selected" : "") + ">" + s.label + "</option>";
+  });
+  return out + "</select>";
+}
+
+function showResultBanner(kind, html){
+  const b = $("result-banner");
+  b.className = "banner " + kind + " show";
+  b.innerHTML = html;
+}
+function hideResultBanner(){ $("result-banner").className = "banner"; }
+
+/* --------------------------------------------------------- past searches */
+async function refreshPastSearches(){
+  try{
+    const data = await api("/api/searches?limit=50");
+    renderPastSearches(data.searches || []);
+  }catch(_){ /* non-fatal */ }
+}
+
+function searchStatusChip(status){
+  const map = {
+    completed:  '<span class="chip teal">completed</span>',
+    running:    '<span class="chip cyan">running</span>',
+    queued:     '<span class="chip cyan">queued</span>',
+    failed:     '<span class="chip status-notafit">failed</span>',
+    no_results: '<span class="chip orange">nothing found</span>',
+  };
+  return map[status] || esc(status);
+}
+
+function renderPastSearches(searches){
+  const wrap = $("past-list");
+  if(!searches.length){
+    wrap.innerHTML = '<div class="empty">No searches yet — run your first search.</div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  searches.forEach((s) => {
+    const div = document.createElement("div");
+    div.className = "past-item";
+    div.innerHTML =
+      '<div class="past-top">' +
+        '<div><b>“' + esc(s.service) + '”</b> &nbsp;' + searchStatusChip(s.status) + "</div>" +
+        '<div class="past-actions"><button data-sel="' + esc(s.id) + '">Load results</button></div>' +
+      "</div>" +
+      '<div class="past-meta">' + leadTypeLabel(s.lead_type) + " · window " + windowLabel(s.time_window) +
+        " · wanted " + (s.leads_needed || "?") + " · found " + (s.accepted_count || 0) +
+        " · " + (s.created_at ? new Date(s.created_at).toLocaleString() : "") +
+        (s.error ? " · <span style='color:#fca5a5'>" + esc(s.error) + "</span>" : "") + "</div>";
+    wrap.appendChild(div);
+  });
+  wrap.querySelectorAll("button[data-sel]").forEach((b) => {
+    b.addEventListener("click", () => selectPastSearch(b.dataset.sel));
+  });
+}
+
+async function selectPastSearch(searchId){
+  try{
+    const s = await api("/api/search/" + encodeURIComponent(searchId) + "/status");
+    state.currentSearchId = searchId;
+    state.currentSearchRow = {
+      service: s.service, country: s.country || "", lead_type: s.lead_type,
+      time_window: s.time_window, leads_needed: s.leads_needed,
+    };
+    state.filterWindow = "all";
+    hideResultBanner();
+    showResultsContext();
+    showResults();
+    switchTab("new"); /* results render under the main view */
+    $("results").scrollIntoView({behavior:"smooth", block:"start"});
+  }catch(err){
+    showResultBanner("err", "Could not load that search: " + esc(err.message));
+  }
+}
+
+/* ---------------------------------------------------------------- init */
+function init(){
+  makeSeg($("leadtype-seg"), LEAD_TYPES, state.leadType, (id) => { state.leadType = id; });
+  makeSeg($("window-seg"), WINDOWS, state.window, (id) => { state.window = id; });
+  windowNote();
+  const refilterItems = [{id:"all", label:"All time"}].concat(WINDOWS);
+  makeSeg($("refilter-seg"), refilterItems, "all", (id) => {
+    state.filterWindow = id;
+    loadLeads();
+  });
+  $("search-form").addEventListener("submit", startSearch);
+  refreshUsage();
+  refreshPastSearches();
+}
+init();
+</script>
+</body>
+</html>
