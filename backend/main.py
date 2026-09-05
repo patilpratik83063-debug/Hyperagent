@@ -80,13 +80,28 @@ def build_classifier(s: Settings):
 
         log.info("Classifier: mock (offline, deterministic)")
         return MockClassifier()
-    log.info("Classifier: %s (structured output, fail-closed)", s.openai_model)
-    return GptClassifier(
-        s.openai_api_key,
-        model=s.openai_model,
-        timeout_seconds=s.openai_timeout_seconds,
-        max_retries=s.openai_max_retries,
-    )
+    if s.llm_provider == "deepseek":
+        log.info("Classifier: DeepSeek %s @ %s (json_object, fail-closed)", s.deepseek_model, s.deepseek_base_url)
+        return GptClassifier(
+            s.deepseek_api_key,
+            model=s.deepseek_model,
+            base_url=s.deepseek_base_url,
+            provider="deepseek",
+            json_mode="json_object",
+            timeout_seconds=s.llm_timeout_seconds,
+            max_retries=s.llm_max_retries,
+        )
+    if s.llm_provider == "openai":
+        log.info("Classifier: OpenAI %s (json_schema, fail-closed)", s.openai_model)
+        return GptClassifier(
+            s.openai_api_key,
+            model=s.openai_model,
+            provider="openai",
+            json_mode="json_schema",
+            timeout_seconds=s.llm_timeout_seconds,
+            max_retries=s.llm_max_retries,
+        )
+    raise RuntimeError(f"Unknown LLM_PROVIDER={s.llm_provider!r} (deepseek | openai)")
 
 
 discovery = build_discovery(settings)

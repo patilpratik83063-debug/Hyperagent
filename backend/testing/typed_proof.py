@@ -42,8 +42,14 @@ def wipe_tables() -> None:
 
 def main() -> int:
     store = build_store(settings)
-    classifier = GptClassifier(settings.openai_api_key, model=settings.openai_model,
-                               timeout_seconds=60.0, max_retries=2)
+    if settings.llm_provider == "deepseek":
+        classifier = GptClassifier(settings.deepseek_api_key, model=settings.deepseek_model,
+                                   base_url=settings.deepseek_base_url, provider="deepseek",
+                                   json_mode="json_object", timeout_seconds=60.0, max_retries=2)
+    else:
+        classifier = GptClassifier(settings.openai_api_key, model=settings.openai_model,
+                                   provider="openai", json_mode="json_schema",
+                                   timeout_seconds=60.0, max_retries=2)
     discovery = SerperDiscoveryClient(settings.serper_api_key, results_per_query=10)
 
     failures = 0

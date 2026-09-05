@@ -26,19 +26,27 @@ from testing.mock_providers import CORPUS, MockClassifier, MockDiscoveryClient  
 
 
 def main() -> int:
-    log.info("supabase configured=%s | openai configured=%s | serper configured=%s",
-             settings.storage_configured, settings.openai_configured, settings.serp_configured)
+    log.info("supabase configured=%s | llm configured=%s (provider %s) | serper configured=%s",
+             settings.storage_configured, settings.llm_configured, settings.llm_provider, settings.serp_configured)
     assert settings.storage_configured, "SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY missing"
-    assert settings.openai_configured, "OPENAI_API_KEY missing"
+    assert settings.llm_configured, f"{settings.llm_key_env} missing"
 
     store = build_store(settings)
-    real_classifier = GptClassifier(settings.openai_api_key, model=settings.openai_model,
-                                    timeout_seconds=settings.openai_timeout_seconds,
-                                    max_retries=settings.openai_max_retries)
+    if settings.llm_provider == "deepseek":
+        real_classifier = GptClassifier(settings.deepseek_api_key, model=settings.deepseek_model,
+                                        base_url=settings.deepseek_base_url, provider="deepseek",
+                                        json_mode="json_object",
+                                        timeout_seconds=settings.llm_timeout_seconds,
+                                        max_retries=settings.llm_max_retries)
+    else:
+        real_classifier = GptClassifier(settings.openai_api_key, model=settings.openai_model,
+                                        provider="openai", json_mode="json_schema",
+                                        timeout_seconds=settings.llm_timeout_seconds,
+                                        max_retries=settings.llm_max_retries)
     discovery = MockDiscoveryClient()
 
-    # 1) Direct GPT-4o check against the §2 traps (deterministic verdicts expected).
-    log.info("-- real GPT-4o classification of hand-picked traps/genuine posts --")
+    # 1) Direct classification check against the §2 traps (deterministic verdicts expected).
+    log.info("-- real LLM classification of hand-picked traps/genuine posts --")
 
     def find(needle: str):
         for p in CORPUS:

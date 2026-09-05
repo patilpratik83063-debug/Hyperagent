@@ -15,7 +15,7 @@ backend/                    FastAPI app (Python 3.12+)
     serp_client.py          Google SERP (Serper.dev-style) implementation of the interface
   query_builder.py          high-signal per-lead-type LinkedIn queries (§6)
   prefilter.py              deterministic cheap rejects before AI spend
-  classifier.py             GPT-4o structured classification, fail-closed (§7)
+  classifier.py             LLM structured classification (DeepSeek by default), fail-closed (§7)
   scoring.py                weighted score + hard acceptance gates (§8)
   engine.py                 iterative exact-count orchestrator (§9)
   db.py                     Supabase store + in-memory store (same protocol)
@@ -39,7 +39,7 @@ user request ─▶ search row ─▶ query set (3-5 natural phrasings per lead 
         "Open post ↗" + Copy URL per row)
    ─▶ deterministic prefilter (cheap drops: job ads, sellers, job seekers,
         marketplaces, advice content — only when no buyer phrase is present)
-   ─▶ GPT-4o structured classification (direction-of-intent, §2 traps in the prompt)
+   ─▶ LLM structured classification (DeepSeek deepseek-chat, direction-of-intent, §2 traps in the prompt)
    ─▶ hard gates: type is a buyer AND buying-not-selling AND service match ≥ 50
         AND intent ≥ recommendation AND weighted score ≥ 60 AND model is_qualified
    ─▶ slice to EXACTLY N best-scoring leads (never more, never padded)
@@ -70,7 +70,7 @@ time window (§3) — it is never hardcoded or stored as a value.
   LinkedIn is typically 1–3 days. The UI shows a note under the 24h option;
   treat 7d/14d/28d as the windows with usable volume.
 - **SERP relevance is a starting filter, not a verdict.** Every result still
-  passes the deterministic prefilter and GPT-4o classification, which catch
+  passes the deterministic prefilter and the LLM classifier, which catch
   the agency self-promotion / job-seeker posts that happen to rank.
 - **Swappable vendor:** everything sits behind `DiscoveryClient.search_posts
   (queries, since)`, so swapping the SERP vendor later never touches the rest
@@ -107,7 +107,8 @@ defensively; leads are deduped, stored and re-sliced on the canonical post URL
 1. Python 3.12+: `python -m venv .venv` then activate, `pip install -r backend/requirements.txt`.
 2. Create a Supabase project; run `supabase/schema.sql` in its SQL editor.
 3. `cd backend && copy .env.example .env` and fill in:
-   - `OPENAI_API_KEY` (GPT-4o — never point the model at `gpt-4o-mini`),
+   - `DEEPSEEK_API_KEY` (https://platform.deepseek.com — classification uses
+     `deepseek-chat`; `LLM_PROVIDER=deepseek` is the default),
    - `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`,
    - `SERPER_API_KEY` from https://serper.dev (free tier; each SERP query costs
      1 of your monthly searches).
@@ -124,12 +125,15 @@ started while config is missing returns `503` naming exactly what to set.
 
 | Env | Default | Meaning |
 | --- | --- | --- |
-| `OPENAI_API_KEY` / `OPENAI_MODEL` | — / `gpt-4o` | Structured-output classification |
+| `LLM_PROVIDER` | `deepseek` | `deepseek` \| `openai` |
+| `DEEPSEEK_API_KEY` / `DEEPSEEK_MODEL` | — / `deepseek-chat` | Classification LLM (DeepSeek) |
+| `DEEPSEEK_BASE_URL` | `https://api.deepseek.com` | DeepSeek OpenAI-compatible endpoint |
+| `OPENAI_API_KEY` / `OPENAI_MODEL` (legacy) | — / `gpt-4o` | Only when `LLM_PROVIDER=openai` |
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | — | Postgres persistence |
 | `SERPER_API_KEY` | — | Google SERP access (https://serper.dev) |
 | `SERPER_BASE_URL` | `https://google.serper.dev` | Any Serper-compatible endpoint |
 | `SERPER_SITE_RESTRICTION` | `linkedin.com/posts` | Appended to every query as `site:` |
-| `SERPER_RESULTS_PER_QUERY` | 20 | `num` results requested per query |
+| `SERPER_RESULTS_PER_QUERY` | 10 | `num` results per query (free tier caps at 10) |
 | `SERPER_GL` / `SERPER_HL` | — / `en` | Optional Google country/language |
 | `DISCOVERY_PROVIDER` | `auto` | `auto` \| `serp` \| `mock` |
 | `MOCK_MODE` | `0` | 1 = offline demo (memory store + mock providers) |
@@ -176,7 +180,8 @@ python -m pytest tests -q
 Covers models/time-window math, country normalization (aliases/ISO/cities/
 accent-folding + graceful fallback), query quality per lead type with §6
 negative pairing across unrelated services, prefilter rules, scoring gates,
-GPT-4o structured-output validation + fail-closed isolation, the Serper
+LLM structured-output validation + fail-closed isolation (DeepSeek json_object
+and OpenAI json_schema request shapes), the Serper
 client (query construction with fresh `after:` date, organic-result mapping,
 quiet-zero-hit behavior, loud provider errors) with HTTP fully mocked, the
 full engine loop (exact-N delivery, no padding, early stop, provider-error
@@ -191,7 +196,8 @@ sellers/offerings ("we offer…", "DM me for…", white-label pitches), job
 seekers ("open to work"), talent marketplaces / recruiting-sellers (recruiting
 freelancers as inventory is **not** a buyer), agency self-promotion ("our
 agency can help" is a seller even though the word "agency" appears — never
-`our_agency`), and thought leadership with no procurement action. GPT-4o must
-return strict-JSON structured fields; every response is re-validated with
+`our_agency`), and thought leadership with no procurement action. The
+classification LLM (DeepSeek `deepseek-chat` by default) must
+return structured JSON fields; every response is re-validated with
 Pydantic, and any failure (unavailable model, timeout, schema violation) drops
 the candidate — never guesses it into "qualified".

@@ -103,7 +103,26 @@ Also return:
 - evidence: a SHORT near-verbatim quote of the deciding line(s) from the post.
 - reason: 1-2 sentences; name the category/type and, if you rejected, which trap it was.
 
-Never invent facts not in the post. Never output anything but the JSON object."""
+Never invent facts not in the post. Never output anything but the JSON object.
+
+OUTPUT FORMAT — return ONE JSON object and NEVER omit a field. The object must contain
+EXACTLY these keys (fill every one; booleans as true/false, scores 0-100, confidence 0-1):
+{
+  "lead_type": "need_freelancer|hiring_buyer|our_agency|irrelevant",
+  "intent_strength": "explicit|active_search|recommendation|problem_awareness|research|none",
+  "is_buying_sourcing": true,
+  "is_selling_offering": false,
+  "is_job_seek": false,
+  "service_match_score": 90,
+  "commercial_intent_score": 80,
+  "decision_maker_signal": true,
+  "evidence_strength": 85,
+  "overall_quality_score": 88,
+  "is_qualified": true,
+  "confidence": 0.95,
+  "evidence": "short verbatim quote",
+  "reason": "1-2 sentences"
+}"""
 
 
 class ClassifierConfigError(RuntimeError):
@@ -178,6 +197,22 @@ def parse_and_validate(payload: str | dict[str, Any]) -> LeadClassification | No
         return None
 
 
+def _validation_gap(payload: str | dict[str, Any]) -> list[str]:
+    """Names of schema fields the model omitted (or a marker for non-JSON)."""
+    try:
+        data = json.loads(payload) if isinstance(payload, str) else payload
+    except (json.JSONDecodeError, TypeError):
+        return ["<response was not JSON>"]
+    if not isinstance(data, dict):
+        return ["<response was not an object>"]
+    try:
+        LeadClassification(**data)
+        return []
+    except ValidationError as exc:
+        fields = {str(e["loc"][0]) for e in exc.errors() if e.get("type") == "missing"}
+        return sorted(fields) if fields else ["<fields had invalid values>"]
+
+
 def _user_prompt(post: dict[str, Any], service: str, country: str, requested_type: str) -> str:
     header = f"The user sells: {service}." + (f" Target location: {country}." if country else "")
     label, definition = _TYPE_DEFINITIONS.get(requested_type, (requested_type, ""))
@@ -197,30 +232,49 @@ Classify this LinkedIn post:
 
 
 class GptClassifier:
-    """Structured-output GPT-4o classifier with per-candidate failure isolation."""
+    """Structured-output lead classifier with per-candidate failure isolation.
+
+    LLM-agnostic through the OpenAI-compatible SDK:
+      * provider="deepseek" (default) — DeepSeek API (deepseek-chat), which
+        supports response_format json_object (NOT OpenAI json_schema).
+      * provider="openai" — OpenAI (e.g. gpt-4o) with strict json_schema mode.
+    Both are validated with Pydantic afterwards; fail-closed on any failure.
+    """
 
     def __init__(
         self,
         api_key: str,
         *,
-        model: str = "gpt-4o",
+        model: str = "deepseek-chat",
+        base_url: str | None = None,
+        provider: str = "deepseek",
+        json_mode: str | None = None,  # None => auto by provider
         timeout_seconds: float = 60.0,
         max_retries: int = 2,
     ) -> None:
         self.model = model
+        self.provider = (provider or "deepseek").lower()
         self.max_retries = max_retries
+        if json_mode is None:
+            json_mode = "json_object" if self.provider == "deepseek" else "json_schema"
+        self.json_mode = json_mode  # json_object | json_schema
+        self._key_env = "DEEPSEEK_API_KEY" if self.provider == "deepseek" else "OPENAI_API_KEY"
         self._client = None
         self._client_lock = threading.Lock()
         if api_key:
             from openai import OpenAI
 
-            self._client = OpenAI(api_key=api_key, timeout=timeout_seconds)
-            log.info("Classifier ready with model %s", model)
+            kwargs = {"api_key": api_key, "timeout": timeout_seconds}
+            if base_url:
+                kwargs["base_url"] = base_url
+            self._client = OpenAI(**kwargs)
+            log.info("Classifier ready: provider=%s model=%s json_mode=%s",
+                     self.provider, model, self.json_mode)
 
     @property
     def config_errors(self) -> list[str]:
         if self._client is None:
-            return ["OPENAI_API_KEY is not set — classification is fail-closed and no candidates will be accepted"]
+            return [f"{self._key_env} is not set — classification is fail-closed and no candidates will be accepted"]
         return []
 
     def classify_batch(
@@ -235,7 +289,8 @@ class GptClassifier:
         """Classify many posts concurrently. Aligned with `candidates`; a
         post whose call failed/returned invalid JSON is None (dropped)."""
         if self._client is None:
-            raise ClassifierConfigError("OpenAI client is not configured (OPENAI_API_KEY missing)")
+            raise ClassifierConfigError(
+                f"LLM client is not configured ({self._key_env} missing)")
         cands = list(candidates)
         if not cands:
             return []
@@ -273,6 +328,17 @@ class GptClassifier:
             {"role": "system", "content": _SYSTEM_PROMPT},
             {"role": "user", "content": _user_prompt(payload, service, country, requested_type)},
         ]
+        response_format: dict[str, Any]
+        if self.json_mode == "json_schema":
+            response_format = {
+                "type": "json_schema",
+                "json_schema": {"name": "lead_classification", "strict": True, "schema": _CLASSIFICATION_SCHEMA},
+            }
+        else:  # DeepSeek-style json_object mode — needs the schema spelled out
+            # in the conversation (it is, in the system prompt), plus a JSON
+            # marker in the user turn so providers that require it accept it.
+            messages.append({"role": "user", "content": "Output a single JSON object only."})
+            response_format = {"type": "json_object"}
         last_err: Exception | None = None
         for attempt in range(self.max_retries + 1):
             try:
@@ -280,18 +346,20 @@ class GptClassifier:
                     model=self.model,
                     messages=messages,
                     temperature=0.0,
-                    response_format={
-                        "type": "json_schema",
-                        "json_schema": {
-                            "name": "lead_classification",
-                            "strict": True,
-                            "schema": _CLASSIFICATION_SCHEMA,
-                        },
-                    },
+                    response_format=response_format,
                 )
                 content = resp.choices[0].message.content
                 parsed = parse_and_validate(content or "")
                 if parsed is None and attempt < self.max_retries:
+                    if self.json_mode == "json_object":
+                        # json_object mode only guarantees valid JSON, not a
+                        # complete schema — tell the model exactly what to fix.
+                        gap = _validation_gap(content or "")
+                        messages.append({"role": "user", "content": (
+                            "Your previous response failed validation: missing/invalid "
+                            f"field(s) {gap}. Reply again with the COMPLETE JSON object "
+                            "containing ALL 14 keys (see the format block above) and nothing else."
+                        )})
                     continue  # retry once on validation failure
                 return parsed
             except Exception as exc:  # noqa: BLE001

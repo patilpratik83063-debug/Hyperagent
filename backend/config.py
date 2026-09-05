@@ -35,11 +35,16 @@ def _str(name: str, default: str = "") -> str:
 
 @dataclass(frozen=True)
 class Settings:
-    # AI
+    # Classification LLM — DeepSeek by default (provider: deepseek | openai).
+    llm_provider: str = field(default_factory=lambda: _str("LLM_PROVIDER", "deepseek").lower())
+    deepseek_api_key: str = field(default_factory=lambda: _str("DEEPSEEK_API_KEY"))
+    deepseek_base_url: str = field(default_factory=lambda: _str("DEEPSEEK_BASE_URL", "https://api.deepseek.com"))
+    deepseek_model: str = field(default_factory=lambda: _str("DEEPSEEK_MODEL", "deepseek-chat"))
+    llm_timeout_seconds: float = field(default_factory=lambda: _float("LLM_TIMEOUT_SECONDS", 60.0))
+    llm_max_retries: int = field(default_factory=lambda: _int("LLM_MAX_RETRIES", 2))
+    # Optional legacy OpenAI path (only used when LLM_PROVIDER=openai).
     openai_api_key: str = field(default_factory=lambda: _str("OPENAI_API_KEY"))
     openai_model: str = field(default_factory=lambda: _str("OPENAI_MODEL", "gpt-4o"))
-    openai_timeout_seconds: float = field(default_factory=lambda: _float("OPENAI_TIMEOUT_SECONDS", 60.0))
-    openai_max_retries: int = field(default_factory=lambda: _int("OPENAI_MAX_RETRIES", 2))
 
     # Database
     supabase_url: str = field(default_factory=lambda: _str("SUPABASE_URL"))
@@ -81,8 +86,17 @@ class Settings:
         return bool(self.supabase_url and self.supabase_service_role_key)
 
     @property
-    def openai_configured(self) -> bool:
-        return bool(self.openai_api_key)
+    def llm_configured(self) -> bool:
+        if self.llm_provider == "deepseek":
+            return bool(self.deepseek_api_key)
+        if self.llm_provider == "openai":
+            return bool(self.openai_api_key)
+        return False
+
+    @property
+    def llm_key_env(self) -> str:
+        """Name of the env var that must hold the key for the active provider."""
+        return "DEEPSEEK_API_KEY" if self.llm_provider == "deepseek" else "OPENAI_API_KEY"
 
     @property
     def serp_configured(self) -> bool:

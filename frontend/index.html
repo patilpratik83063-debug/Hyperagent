@@ -149,6 +149,51 @@
   .empty{color:var(--sec);text-align:center;padding:26px 10px;font-size:.93rem}
   footer{color:#44635d;text-align:center;font-size:.78rem;padding:18px 10px 30px}
   [hidden]{display:none !important}
+
+  /* ================= mobile responsive ================= */
+  @media (max-width: 760px){
+    .topbar{padding:16px 14px 10px;gap:10px}
+    #logo-slot img{height:38px}
+    .titleblock h1{font-size:1.25rem}
+    .titleblock .subhead{font-size:.84rem}
+    main{padding:4px 12px 48px}
+    .card{padding:14px 12px 16px;margin-bottom:14px;border-radius:10px}
+    .card h2{font-size:1rem}
+    .tabbar{margin:8px 0 12px;gap:8px}
+    .tab{padding:8px 14px;font-size:.86rem}
+    .seg-btn{padding:9px 12px;font-size:.9rem}          /* touch target */
+    input[type=text], select{padding:11px 10px;font-size:1rem}
+    .actionrow{flex-direction:column;align-items:stretch;gap:10px}
+    button.cta{width:100%}
+    #usage-pill{text-align:center;flex:0 0 auto}
+    .helper{font-size:.82rem}
+    .filterbar{gap:8px}
+    .filterbar .seg{width:100%}
+    .past-top{flex-direction:column;align-items:flex-start}
+    /* results table becomes stacked cards */
+    .tblwrap{border:0;overflow:visible;border-radius:0}
+    table{min-width:0}
+    thead{display:none}
+    table, tbody, tr, td{display:block;width:100%}
+    tr{
+      background:var(--panel);border:1px solid var(--border);border-radius:10px;
+      padding:6px 4px;margin:0 0 10px;
+    }
+    tr:last-child{margin-bottom:0}
+    td{border:0;padding:6px 10px}
+    td::before{
+      content:attr(data-label);display:block;color:var(--sec);
+      font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-bottom:2px;
+    }
+    .snippet{max-width:none}
+    .snippet .clip{-webkit-line-clamp:4}
+    .cell-select select{max-width:none;width:100%;padding:7px 8px}
+    .notes-input{width:100%}
+  }
+  @media (max-width: 380px){
+    .titleblock h1{font-size:1.1rem}
+    .titleblock .subhead{font-size:.8rem}
+  }
 </style>
 </head>
 <body>
@@ -535,20 +580,20 @@ function renderLeads(leads){
     const date = l.post_date ? String(l.post_date) : "—";
     const tr = document.createElement("tr");
     tr.innerHTML =
-      '<td><span class="chip ' + scoreChip + '">' + score + "</span></td>" +
-      '<td><span class="chip ' + (l.lead_type === "our_agency" ? "orange" : l.lead_type === "hiring_buyer" ? "cyan" : "teal") + '">' +
+      '<td data-label="Score"><span class="chip ' + scoreChip + '">' + score + "</span></td>" +
+      '<td data-label="Type"><span class="chip ' + (l.lead_type === "our_agency" ? "orange" : l.lead_type === "hiring_buyer" ? "cyan" : "teal") + '">' +
         esc(leadTypeLabel(l.lead_type)) + "</span></td>" +
-      '<td><span class="chip teal">' + esc(windowLabel(l.time_window)) + "</span></td>" +
-      '<td class="snippet"><div class="clip" title="' + esc(l.post_text || "") + '">' + esc(l.post_text || "") + "</div>" +
+      '<td data-label="Window"><span class="chip teal">' + esc(windowLabel(l.time_window)) + "</span></td>" +
+      '<td class="snippet" data-label="Post"><div class="clip" title="' + esc(l.post_text || "") + '">' + esc(l.post_text || "") + "</div>" +
         (l.post_url
           ? '<div class="post-actions"><a href="' + href(l.post_url) + '" target="_blank" rel="noopener">Open post ↗</a>' +
             ' <button type="button" class="copy-url" data-url="' + esc(l.post_url) + '">Copy URL</button></div>'
           : '<span class="muted small">missing post url</span>') + "</td>" +
-      '<td class="author">' + (l.author_name ? "<b>" + esc(l.author_name) + "</b>" : "—") + "<br>" +
+      '<td class="author" data-label="Author">' + (l.author_name ? "<b>" + esc(l.author_name) + "</b>" : "—") + "<br>" +
         (l.author_profile_url ? '<a href="' + href(l.author_profile_url) + '" target="_blank" rel="noopener">Profile ↗</a>' : "") + "</td>" +
-      '<td><span class="date">' + esc(date) + "</span></td>" +
-      '<td class="cell-select">' + statusSelect(l) + "</td>" +
-      '<td><input class="notes-input" type="text" data-id="' + esc(l.id) + '" value="' + esc(l.notes || "") +
+      '<td data-label="Date"><span class="date">' + esc(date) + "</span></td>" +
+      '<td class="cell-select" data-label="Status">' + statusSelect(l) + "</td>" +
+      '<td data-label="Notes"><input class="notes-input" type="text" data-id="' + esc(l.id) + '" value="' + esc(l.notes || "") +
         '" placeholder="Add a note…" aria-label="Notes"></td>';
     body.appendChild(tr);
   });
